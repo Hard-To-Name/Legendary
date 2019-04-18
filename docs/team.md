@@ -5,12 +5,11 @@ title:  Team
 
 # {{ page.title }}
 
+## Chenhao Li
+***UCI Net ID***: chenhal5
 
-## USER 1
-***UCI Net ID***: ucinetid1
+## Ran Duan
+***UCI Net ID***: duanr1
 
-## USER 2
-***UCI Net ID***: ucinetid2
-
-## USER 3
-***UCI Net ID***: ucinetid3
+## Hao Yan
+***UCI Net ID***: hyan9
