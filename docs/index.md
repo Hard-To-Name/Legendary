@@ -3,38 +3,17 @@ layout: default
 title:  Home
 ---
 
-Source code: https://github.com/USER/PROJECT (_fix this_)
+# Welcom to the Legendary Homepage!!!!
+***
 
-Reports:
+We are going to build an agent that can make the best choice in battle by using
+bow.
 
-- [Proposal](proposal.html)
-- [Status](status.html)
-- [Final](final.html)
+# Links
+***
 
-What's Markdown (`.md`)?
-
-Markdown is markup that lets you write hypertext (HTML) documents
-in easy-to-read and easy-to-write plain text.
-No angle brackets `<></>` required for
-paragraphs, lists, blockquotes, tables, etc.
-
-
-This is a paragraph (in Markdown). Some more
-text here.
-
-This is another paragraph.
-
-This is a list:
-
-- Orange
-- Apple
-- Blueberry
-
-$$x^2 = y^2$$
-
-
-Just getting started with Markdown?
-See the [HTML <-> Markdown Quick Reference (Cheat Sheet)][quickref].
-
-
-[quickref]: https://github.com/mundimark/quickrefs/blob/master/HTML.md
+* [Team Members](team.html)
+* [Proposal](proposal.html)
+* [Project Status](status.html) (not published yet)
+* [Final Report](final.html) (not published yet)
+* [Github Repository](https://github.com/Hard-To-Name/Legendary)
