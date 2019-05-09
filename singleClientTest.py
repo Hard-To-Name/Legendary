@@ -3,7 +3,6 @@ import threading
 import MalmoPython
 import random
 
-
 def drawMobs(num_mobs):
     xml = ""
     for i in range(num_mobs):
@@ -22,7 +21,7 @@ def drawItems(num_items):
     return xml
 
 
-def getXML(num_mobs = 0, num_items = 4, agent_names = ['A', 'B', 'C']):
+def getXML(num_mobs = 0, num_items = 4, agent_names = ['A']):
     mission_name = 'multi_agent'
 
     mission_xml = '''<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
@@ -100,7 +99,6 @@ def getXML(num_mobs = 0, num_items = 4, agent_names = ['A', 'B', 'C']):
     mission_xml += '''</Mission>'''
     return mission_xml
 
-
 class ThreadedAgent(threading.Thread):
     def __init__(self, role, clientPool, missionXML):
         threading.Thread.__init__(self)
@@ -156,29 +154,11 @@ class ThreadedAgent(threading.Thread):
         time.sleep(2)
         self.agent_host = None
 
-
-if __name__ == "__main__":
-    mission_agent_names = ["A", "B", "C"]
-    mission_xml = getXML(agent_names=mission_agent_names)
-    steps = 30000
-    mode = "training"
-
-    clients = [10000, 10001, 10002]
-    print('Clients: {}'.format(clients))
-
+if __name__ == '__main__':
     my_client_pool = MalmoPython.ClientPool()
-    for client in clients:
-        my_client_pool.add(MalmoPython.ClientInfo("127.0.0.1", client))
-    print(my_client_pool)
-
-    agents = [ThreadedAgent(0, my_client_pool, mission_xml),
-              ThreadedAgent(1, my_client_pool, mission_xml),
-              ThreadedAgent(2, my_client_pool, mission_xml)]
-
-    for agent in agents:
-        agent.start()
-
-    for agent in agents:
-        agent.join()
-
+    my_client_pool.add(MalmoPython.ClientInfo("127.0.0.1", 10000))
+    mission_xml = getXML()
+    agent = ThreadedAgent(0, my_client_pool, mission_xml)
+    agent.start()
+    agent.join()
     time.sleep(10000)
