@@ -112,27 +112,35 @@ class iKun(object):
             elif 'turn' in action:
                 if self.is_turning:
                     command = 'turn 0'
+                    self.is_turning = False
                 else:
                     current_turning = self.ratio * self.turning
                     command = action + str(current_turning)
+                    self.is_turning = True
 
             elif action == 'jump':
                 if self.is_jumping:
                     command = 'jump 0'
+                    self.is_jumping = False
                 else:
                     command = 'jump 1'
+                    self.is_jumping = True
 
             elif action == 'attack':
                 if self.is_attacking:
                     command = 'attack 0'
+                    self.is_attacking = False
                 else:
                     command = 'attack 1'
+                    self.is_attacking = True
 
             elif action == 'crouch':
                 if self.is_crouching:
                     command = 'crouch 0'
+                    self.is_crouching = False
                 else:
                     command = 'crouch 1'
+                    self.is_crouching = True
 
             print("Command:", command)
             agent_host.sendCommand(command)
