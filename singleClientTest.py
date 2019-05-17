@@ -2,14 +2,21 @@ import time
 import threading
 import MalmoPython
 import random
+import json
 from collections import defaultdict
+import tensorflow as tf
+
+
+ARENA_WIDTH = 60
+ARENA_BREADTH = 60
+
 
 def drawMobs(num_mobs):
     xml = ""
     for i in range(num_mobs):
         x = str(random.randint(-17, 17))
         z = str(random.randint(-17, 17))
-        xml += '<DrawEntity x="' + x + '" y="214" z="' + z + '" type="Zombie"/>'
+        xml += '<DrawEntity x="' + x + '" y="214" z="' + z + '" type="Zombie" />'
     return xml
 
 
@@ -22,7 +29,7 @@ def drawItems(num_items):
     return xml
 
 
-def getXML(num_mobs = 0, num_items = 4, agent_name="iKun"):
+def getXML(num_mobs = 1, num_items = 4, agent_name="iKun"):
     mission_name = 'iKun'
 
     mission_xml = '''<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
@@ -62,15 +69,11 @@ def getXML(num_mobs = 0, num_items = 4, agent_name="iKun"):
                 </Inventory>
                 </AgentStart>
                 <AgentHandlers>
+                  <ChatCommands/>
                   <ContinuousMovementCommands turnSpeedDegs="180"/>
-                  <RewardForCollectingItem>
-                    <Item type="apple" reward="10"/>
-                  </RewardForCollectingItem>
-                  <RewardForTimeTaken initialReward="0" delta="1" density="PER_TICK"/>
-                  <RewardForDamagingEntity>
-                    <Mob type="Zombie" reward="1"/>
-                  </RewardForDamagingEntity>
-                  <RewardForSendingCommand reward="-1"/>
+                  <ObservationFromNearbyEntities>
+                    <Range name="entities" xrange="'''+str(ARENA_WIDTH)+'''" yrange="2" zrange="'''+str(ARENA_BREADTH)+'''" />
+                  </ObservationFromNearbyEntities>
                   <VideoProducer>
                     <Width>512</Width>
                     <Height>512</Height>
@@ -83,14 +86,34 @@ def getXML(num_mobs = 0, num_items = 4, agent_name="iKun"):
     return mission_xml
 
 
+class Model:
+
+    def __init__(self, actions):
+        pass
+
+    def predict(self):
+        pass
+
+    def fit(self):
+        pass
+
+
 class iKun(object):
 
-    def __init__(self):
+    def __init__(self, n = 1, alpha = 0.3, gamma = 1, model = None):
+        self.epsilon = 0.5
+        self.q_table = {}
+        self.n, self.alpha, self.gamma = n, alpha, gamma
+
+        self.location = [0, 0]
+        self.life = 0
         self.speed = 2
         self.turning = 1
         self.ratio = 1.0
         self.defense = 1.0
         self.dodge = 0.0
+        self.damage_dealt = 0
+        self.reward = 0
 
         self.is_attacking = False
         self.is_crouching = False
@@ -98,10 +121,46 @@ class iKun(object):
         self.is_jumping = False
 
         self.inventory = defaultdict(lambda: 0, {})
+        self.state = {}
         self.actions = ['move', 'turn +', 'turn -', 'jump', 'attack', 'crouch']
 
     def run(self, agent_host):
-        while True:
+
+        world_state = agent_host.getWorldState()
+
+        while world_state.is_mission_running:
+
+            zombie_locations = set()
+
+            world_state = agent_host.getWorldState()
+            if world_state.number_of_observations_since_last_state > 0:
+                msg = world_state.observations[-1].text
+                ob = json.loads(msg)
+                print(ob)
+
+                if "Life" in ob:
+                    current_life = ob[u'Life']
+                    if current_life < self.life:
+                        agent_host.sendCommand("chat MoAiLaoZi!")
+                        self.reward -= 20
+                    self.life = current_life
+
+                if 'DamageDealt' in ob:
+                    current_damage_dealt = ob[u'DamageDealt']
+                    if self.damage_dealt < current_damage_dealt:
+                        agent_host.sendCommand("chat Ji Ni Tai Mei")
+                        self.reward += 5
+                    self.damage_dealt = current_damage_dealt
+
+                if "entities" in ob:
+                    entities = ob["entities"]
+                    for ent in entities:
+                        if ent["name"] == "Zombie":
+                            zombie_locations.add(tuple([ent["x"], ent["z"]]))
+                        elif ent["name"] == "iKun":
+                            self.location[0] = ent["x"]
+                            self.location[1] = ent["z"]
+
             action = random.choice(self.actions)
             command = ''
 
@@ -147,6 +206,7 @@ class iKun(object):
             time.sleep(0.1)
 
 
+
 if __name__ == '__main__':
     my_client_pool = MalmoPython.ClientPool()
     my_client_pool.add(MalmoPython.ClientInfo("127.0.0.1", 10000))
@@ -165,8 +225,6 @@ if __name__ == '__main__':
         world_state = agent_host.getWorldState()
         while not world_state.has_mission_begun:
             time.sleep(0.1)
-            world_state = agent_host.getWorldState()
-
             ikun.run(agent_host)
 
     time.sleep(10000)
