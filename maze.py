@@ -86,7 +86,7 @@ def GetMissionXML():
             </Mission>'''
 
 
-def build_model(lr=0.001):
+def build_model(load_weight_filename, lr=0.001):
     global ACTIONS
     model = Sequential()
     model.add(Dense(MAP_LENGTH * MAP_WIDTH, input_shape=(MAP_LENGTH * MAP_WIDTH, )))
@@ -94,6 +94,7 @@ def build_model(lr=0.001):
     model.add(Dense(MAP_LENGTH * MAP_WIDTH))
     model.add(PReLU())
     model.add(Dense(len(ACTIONS)))
+    model.load_weights(load_weight_filename + '.h5')
     model.compile(optimizer='adam', loss='mse')
     return model
 
@@ -237,12 +238,18 @@ if __name__ == '__main__':
     mission_xml = GetMissionXML()
     agent_host = MalmoPython.AgentHost()
     agent_host.setDebugOutput(False)
+    load_weight_filename = "weights"
+    save_weight_filename = "weights"
 
-    model = build_model()
+    model = build_model(load_weight_filename)
+    # Save model
+    with open(save_weight_filename + '.json', 'w') as outfile:
+        json.dump(model.to_json(), outfile)
     ikun = iKun(model)
     maze = Maze(agent_host, ikun)
 
     num_reps = 100000
+    num_reps_to_save_weights = 50
     for iRepeat in range(num_reps):
         mission = MalmoPython.MissionSpec(mission_xml, True)
         mission_record = MalmoPython.MissionRecordSpec()
@@ -270,5 +277,9 @@ if __name__ == '__main__':
 
         print("maze run")
         maze.run()
+
+        # Save weights
+        if num_reps % num_reps_to_save_weights == 0:
+            ikun.model.save_weights(save_weight_filename + '.h5', overwrite=True)
 
     time.sleep(10000)
