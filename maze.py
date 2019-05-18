@@ -101,7 +101,7 @@ def build_model(load_weight_filename, lr=0.001):
 
 class iKun(object):
 
-    def __init__(self, model, memory_length=20, gamma=0.95, epsilon=0.2):
+    def __init__(self, model, memory_length=20, gamma=0.95, epsilon=0):
         self.model = model
         self.memory = []
         self.memory_length = memory_length
@@ -281,5 +281,6 @@ if __name__ == '__main__':
         # Save weights
         if num_reps % num_reps_to_save_weights == 0:
             ikun.model.save_weights(save_weight_filename + '.h5', overwrite=True)
+            print("Weights saved.")
 
     time.sleep(10000)
