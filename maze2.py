@@ -8,6 +8,7 @@ from keras.layers.advanced_activations import PReLU
 import MalmoPython
 
 ACTIONS = ['movenorth 1', 'movesouth 1', 'movewest 1', 'moveeast 1']
+MOVES = {0: [0, -1], 1: [0, 1], 2: [1, -1], 3: [1, 1]}
 
 SIZE = 10
 MAP_LENGTH = 2 * SIZE + 1
@@ -23,11 +24,9 @@ SELF = 4
 def GetMissionXML():
     return '''<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
             <Mission xmlns="http://ProjectMalmo.microsoft.com" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-
               <About>
                 <Summary>Hello world!</Summary>
               </About>
-
             <ServerSection>
               <ServerInitialConditions>
                 <Time>
@@ -43,20 +42,19 @@ def GetMissionXML():
                   </DrawingDecorator>
                   <MazeDecorator>
                     <Seed>0</Seed>
-                    <SizeAndPosition width="''' + str(SIZE) + '''" length="''' + str(SIZE) + '''" height="10" xOrigin="-32" yOrigin="69" zOrigin="-5"/>
+                    <SizeAndPosition width="''' + str(10) + '''" length="''' + str(10) + '''" height="10" xOrigin="-32" yOrigin="69" zOrigin="-5"/>
                     <StartBlock type="emerald_block" fixedToEdge="true"/>
                     <EndBlock type="redstone_block" fixedToEdge="true"/>
                     <PathBlock type="diamond_block"/>
                     <FloorBlock type="air"/>
-                    <GapBlock type="air"/>
-                    <GapProbability>''' + str(0) + '''</GapProbability>
+                    <GapBlock type="stone"/>
+                    <GapProbability>''' + str(0.2) + '''</GapProbability>
                     <AllowDiagonalMovement>false</AllowDiagonalMovement>
                   </MazeDecorator>
                   <ServerQuitFromTimeUp timeLimitMs="10000"/>
                   <ServerQuitWhenAnyAgentFinishes/>
                 </ServerHandlers>
               </ServerSection>
-
               <AgentSection mode="Survival">
                 <Name>CS175AwesomeMazeBot</Name>
                 <AgentStart>
@@ -70,6 +68,7 @@ def GetMissionXML():
                     </RewardForTouchingBlockType>
                     <AgentQuitFromTouchingBlockType>
                         <Block type="redstone_block"/>
+                        <Block type="stone"/>
                     </AgentQuitFromTouchingBlockType>
                     <ObservationFromGrid>
                       <Grid name="floorAll">
@@ -90,7 +89,7 @@ def build_model(load_weight_filename, lr=0.001):
     model.add(Dense(MAP_LENGTH * MAP_WIDTH))
     model.add(PReLU())
     model.add(Dense(len(ACTIONS)))
-    model.load_weights(load_weight_filename + '.h5')
+    #model.load_weights(load_weight_filename + '.h5')
     model.compile(optimizer='adam', loss='mse')
     return model
 
@@ -142,6 +141,7 @@ class Maze(object):
         self.agent_host = agent_host
         self.maze = np.zeros((MAP_LENGTH, MAP_WIDTH))
         self.position = [-1, -1]
+        self.boundary = [-1, -1, -1, -1]
         self.agent = agent
         self.reward = 0
 
@@ -149,7 +149,7 @@ class Maze(object):
         global MAP_LENGTH, MAP_WIDTH, TARGET, AIR, LAND
         grid = -1
         world_state = agent_host.getWorldState()
-        while world_state.is_mission_running:
+        while world_state.has_mission_begun:
             time.sleep(0.1)
             world_state = agent_host.getWorldState()
             if len(world_state.errors) > 0:
@@ -161,19 +161,27 @@ class Maze(object):
                 grid = observations.get(u'floorAll', 0)
                 break
 
-        self.position = [-1, -1]
-        self.target = [-1, -1]
-
         if not grid == -1:
             for i in range(len(grid)):
                 if grid[i] == "redstone_block":
                     self.maze[i // MAP_WIDTH][i % MAP_WIDTH] = TARGET
-                elif grid[i] == "air":
+                elif grid[i] == "stone":
                     self.maze[i // MAP_WIDTH][i % MAP_WIDTH] = AIR
                 elif grid[i] == "diamond_block":
                     self.maze[i // MAP_WIDTH][i % MAP_WIDTH] = LAND
                 elif grid[i] == "emerald_block":
                     self.position = [i // MAP_WIDTH, i % MAP_WIDTH]
+                    self.maze[i // MAP_WIDTH][i % MAP_WIDTH] = LAND
+                    print("self.position:", self.position)
+                else: continue
+                # Track first block
+                if self.boundary[0] == -1:
+                    self.boundary[0] = i // MAP_WIDTH
+                    self.boundary[1] = i % MAP_WIDTH
+                # Track last block
+                self.boundary[2] = i // MAP_WIDTH
+                self.boundary[3] = i % MAP_WIDTH
+            print(self.boundary)
 
     def get_canvas(self):
         global SELF, TARGET
@@ -183,12 +191,10 @@ class Maze(object):
 
     def run(self):
         global ACTIONS, LAND
+        self.initialize()
         canvas = self.get_canvas()
 
         while True:
-            self.initialize()
-            print("position:", self.position)
-
             prev_canvas = canvas
             reward = 0
             rnd = random.random()
@@ -196,11 +202,21 @@ class Maze(object):
             if rnd < self.agent.epsilon:
                 action = random.randint(0, 3)
             else:
-                action = np.argmax(self.agent.predict(canvas))
+                actions = self.agent.predict(canvas)
+                action = np.argmax(actions)
+
+                while action == 0 and self.position[0] == self.boundary[0] or\
+                        action == 1 and self.position[0] == self.boundary[2] or \
+                        action == 2 and self.position[1] == self.boundary[1] or\
+                        action == 3 and self.position[1] == self.boundary[3]:
+                    actions[action] = -1e6
+                    action = np.argmax(actions)
 
             print("action:", action)
+            self.position[MOVES[action][0]] += MOVES[action][1]
+            print("position:", self.position)
             agent_host.sendCommand(ACTIONS[action])
-            time.sleep(2)
+            time.sleep(0.1)
             world_state = self.agent_host.getWorldState()
             for error in world_state.errors:
                 print("Error:", error.text)
@@ -211,14 +227,14 @@ class Maze(object):
             if len(world_state.rewards) > 0:
                 current_reward = world_state.rewards[-1].getValue()
 
-            if game_over:  # -20 for falling
+            if game_over and current_reward < 0:  # -20 for falling
                 current_reward = -20
 
             print("current_reward:", current_reward)
             self.reward += current_reward
 
+            canvas = self.get_canvas()
             status = [prev_canvas, action, current_reward, canvas, game_over]
-            print("status_reward:", status[2])
             self.agent.memorize(status)
             self.agent.train()
 
@@ -259,7 +275,7 @@ if __name__ == '__main__':
                     print("Error starting mission", (iRepeat + 1), ":", e)
                     exit(1)
                 else:
-                    time.sleep(2)
+                    time.sleep(0.1)
 
         world_state = agent_host.getWorldState()
         while not world_state.has_mission_begun:
