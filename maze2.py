@@ -1,6 +1,7 @@
 from __future__ import print_function
 import os, sys, time, datetime, json, random
 import numpy as np
+import math
 from keras.models import Sequential
 from keras.layers.core import Dense, Activation
 from keras.optimizers import SGD , Adam, RMSprop
@@ -19,6 +20,8 @@ AIR = 1
 LAND = 2
 TARGET = 3
 SELF = 4
+
+INIT_POS = [-1, -1]
 
 
 def GetMissionXML():
@@ -58,7 +61,7 @@ def GetMissionXML():
               <AgentSection mode="Survival">
                 <Name>CS175AwesomeMazeBot</Name>
                 <AgentStart>
-                    <Placement x="0.5" y="56.0" z="0.5" yaw="0"/>
+                    <Placement x="''' + str(0.5) + '''" y="56.0" z="''' + str(0.5) + '''" yaw="0"/>
                 </AgentStart>
                 <AgentHandlers>
                     <DiscreteMovementCommands/>
@@ -140,13 +143,14 @@ class Maze(object):
     def __init__(self, agent_host, agent):
         self.agent_host = agent_host
         self.maze = np.zeros((MAP_LENGTH, MAP_WIDTH))
+        self.visited = np.zeros((MAP_LENGTH, MAP_WIDTH))
         self.position = [-1, -1]
         self.boundary = [-1, -1, -1, -1]
         self.agent = agent
         self.reward = 0
 
     def initialize(self):
-        global MAP_LENGTH, MAP_WIDTH, TARGET, AIR, LAND
+        global MAP_LENGTH, MAP_WIDTH, TARGET, AIR, LAND, INIT_POS
         grid = -1
         world_state = agent_host.getWorldState()
         while world_state.has_mission_begun:
@@ -170,7 +174,8 @@ class Maze(object):
                 elif grid[i] == "diamond_block":
                     self.maze[i // MAP_WIDTH][i % MAP_WIDTH] = LAND
                 elif grid[i] == "emerald_block":
-                    self.position = [i // MAP_WIDTH, i % MAP_WIDTH]
+                    INIT_POS = [i // MAP_WIDTH, i % MAP_WIDTH]
+                    self.position = INIT_POS
                     self.maze[i // MAP_WIDTH][i % MAP_WIDTH] = LAND
                     print("self.position:", self.position)
                 else: continue
@@ -188,6 +193,22 @@ class Maze(object):
         canvas = np.copy(self.maze)
         canvas[self.position[0]][self.position[1]] = SELF
         return canvas.reshape((1, -1))
+
+    def teleport(self, teleport_x, teleport_z):
+        """Directly teleport to a specific position."""
+        tp_command = "tp " + str(teleport_x) + " 56 " + str(teleport_z)
+        self.agent_host.sendCommand(tp_command)
+        good_frame = False
+        while not good_frame:
+            world_state = self.agent_host.getWorldState()
+            if not world_state.is_mission_running:
+                print("Mission ended prematurely - error.")
+                exit(1)
+            if not good_frame and world_state.number_of_video_frames_since_last_state > 0:
+                frame_x = world_state.video_frames[-1].xPos
+                frame_z = world_state.video_frames[-1].zPos
+                if math.fabs(frame_x - teleport_x) < 0.001 and math.fabs(frame_z - teleport_z) < 0.001:
+                    good_frame = True
 
     def run(self):
         global ACTIONS, LAND
@@ -216,7 +237,7 @@ class Maze(object):
             self.position[MOVES[action][0]] += MOVES[action][1]
             print("position:", self.position)
             agent_host.sendCommand(ACTIONS[action])
-            time.sleep(0.1)
+            time.sleep(0.3)
             world_state = self.agent_host.getWorldState()
             for error in world_state.errors:
                 print("Error:", error.text)
@@ -226,6 +247,10 @@ class Maze(object):
             current_reward = 0
             if len(world_state.rewards) > 0:
                 current_reward = world_state.rewards[-1].getValue()
+
+            if self.visited[self.position[0]][self.position[1]] == 0:
+                current_reward += 2
+                self.visited[self.position[0]][self.position[1]] = 1
 
             if game_over and current_reward < 0:  # -20 for falling
                 current_reward = -20
@@ -260,6 +285,14 @@ if __name__ == '__main__':
     num_reps = 100000
     num_reps_to_save_weights = 50
     for iRepeat in range(num_reps):
+
+        if not iRepeat == 0:
+            # self.boundary[0] <= INIT_POS[0] <= self.boundary[2]
+            # self.boundary[1] <= INIT_POS[1] <= self.boundary[3]
+            startX = random.randint(maze.boundary[0], maze.boundary[2]) - INIT_POS[0]
+            startZ = random.randint(maze.boundary[1], maze.boundary[3]) - INIT_POS[1]
+            maze.teleport(startX, startZ)
+
         mission = MalmoPython.MissionSpec(mission_xml, True)
         mission_record = MalmoPython.MissionRecordSpec()
         my_client_pool = MalmoPython.ClientPool()
