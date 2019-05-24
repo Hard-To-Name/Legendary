@@ -14,7 +14,7 @@ from keras.layers.advanced_activations import PReLU
 import MalmoPython
 
 ACTIONS = ['movenorth 1', 'movesouth 1', 'movewest 1', 'moveeast 1']
-MOVES = {0: [0, -1], 1: [0, 1], 2: [1, -1], 3: [1, 1]}
+MOVES = {0: [1, -1], 1: [1, 1], 2: [0, -1], 3: [0, 1]}
 
 SIZE = 10
 MAP_LENGTH = 2 * SIZE + 1
@@ -50,7 +50,7 @@ def GetMissionXML():
                   </DrawingDecorator>
                   <MazeDecorator>
                     <Seed>0</Seed>
-                    <SizeAndPosition width="''' + str(10) + '''" length="''' + str(10) + '''" height="10" xOrigin="-32" yOrigin="69" zOrigin="-5"/>
+                    <SizeAndPosition width="''' + str(10) + '''" length="''' + str(10) + '''" height="10" xOrigin="0" yOrigin="69" zOrigin="0"/>
                     <StartBlock type="emerald_block" fixedToEdge="true"/>
                     <EndBlock type="redstone_block" fixedToEdge="true"/>
                     <PathBlock type="diamond_block"/>
@@ -121,7 +121,7 @@ class iKun(object):
     def predict(self, canvas):
         return self.model.predict(canvas)[0]
 
-    def train(self, batch_size=5):
+    def train(self, repeat_time, loss_value, batch_size=5):
         global ACTIONS
 
         env_size = MAP_LENGTH * MAP_WIDTH
@@ -141,8 +141,12 @@ class iKun(object):
             else:
                 targets[i][action] = reward + self.gamma * Q_sa
 
-        self.model.fit(inputs, targets, epochs=2, batch_size=5, verbose=0)
-        # print("loss:", self.model.evaluate(inputs, targets))
+        self.model.fit(inputs, targets, epochs=1, batch_size=5, verbose=0)
+        loss_value.append(self.model.evaluate(inputs, targets))
+        print("loss:", loss_value[-1])
+
+        if repeat_time > 0 and repeat_time % 20 == 0:
+            self.epsilon *= 0.9
 
 
 class Maze(object):
@@ -175,25 +179,25 @@ class Maze(object):
         if not grid == -1:
             for i in range(len(grid)):
                 if grid[i] == "redstone_block":
-                    self.maze[i // MAP_WIDTH][i % MAP_WIDTH] = TARGET
+                    self.maze[i % MAP_WIDTH][i // MAP_WIDTH] = TARGET
                 elif grid[i] == "stone":
-                    self.maze[i // MAP_WIDTH][i % MAP_WIDTH] = AIR
+                    self.maze[i % MAP_WIDTH][i // MAP_WIDTH] = AIR
                 elif grid[i] == "diamond_block":
-                    self.maze[i // MAP_WIDTH][i % MAP_WIDTH] = LAND
+                    self.maze[i % MAP_WIDTH][i // MAP_WIDTH] = LAND
                 elif grid[i] == "emerald_block":
-                    INIT_POS = [i // MAP_WIDTH, i % MAP_WIDTH]
+                    INIT_POS = [i % MAP_WIDTH, i // MAP_WIDTH]
                     self.position = INIT_POS
-                    self.maze[i // MAP_WIDTH][i % MAP_WIDTH] = LAND
+                    self.maze[i % MAP_WIDTH][i // MAP_WIDTH] = LAND
                     print("self.position:", self.position)
                 else:
                     continue
                 # Track first block
                 if self.boundary[0] == -1:
-                    self.boundary[0] = i // MAP_WIDTH
-                    self.boundary[1] = i % MAP_WIDTH
+                    self.boundary[0] = i % MAP_WIDTH
+                    self.boundary[1] = i // MAP_WIDTH
                 # Track last block
-                self.boundary[2] = i // MAP_WIDTH
-                self.boundary[3] = i % MAP_WIDTH
+                self.boundary[2] = i % MAP_WIDTH
+                self.boundary[3] = i // MAP_WIDTH
             print(self.boundary)
 
     def get_canvas(self):
@@ -206,7 +210,7 @@ class Maze(object):
         """Directly teleport to a specific position."""
 
         # TODO: chenge the teleport position to random position
-        tp_command = "tp -25.5 71 2.5"
+        tp_command = "tp "+str(teleport_x+0.5)+" 71 "+str(teleport_z+0.5)
         self.agent_host.sendCommand(tp_command)
         # good_frame = False
         # while not good_frame:
@@ -220,10 +224,11 @@ class Maze(object):
         #         if math.fabs(frame_x - teleport_x) < 0.001 and math.fabs(frame_z - teleport_z) < 0.001:
         #             good_frame = True
 
-    def run(self, iRepeat):
+    def run(self, iRepeat, loss_value):
         global ACTIONS, LAND
         self.initialize()
         canvas = self.get_canvas()
+        self.visited = np.zeros((MAP_LENGTH, MAP_WIDTH))
 
         if not iRepeat == 0:
             # self.boundary[0] <= INIT_POS[0] <= self.boundary[2]
@@ -235,11 +240,26 @@ class Maze(object):
             x= -32+length of edge, z=-5 to z=-5+length of edge. Make sure that
             the final position is +-0.5, e.g. x = -22.5, y = 71, z = -0.5
             '''
-            startX = random.randint(
-                maze.boundary[0], maze.boundary[2]) - INIT_POS[0]
-            startZ = random.randint(
-                maze.boundary[1], maze.boundary[3]) - INIT_POS[1]
+            if iRepeat < 50:
+                startX = random.randint(5, 9)
+                startZ = random.randint(5, 9)
+            elif iRepeat < 100:
+                startX = random.randint(0, 5)
+                startZ = random.randint(5, 9)
+            elif iRepeat < 150:
+                startX = random.randint(5, 9)
+                startZ = random.randint(0, 5)
+            elif iRepeat < 200:
+                startX = random.randint(0, 5)
+                startZ = random.randint(0, 5)
+            else:
+                startX, startZ = [
+                    self.position[0]-self.boundary[0], self.position[1]-self.boundary[1]]
             maze.teleport(startX, startZ)
+            old_pos = self.position
+            self.position = [startX + self.boundary[0],
+                             startZ + self.boundary[1]]
+            time.sleep(0.2)
 
         while True:
             prev_canvas = canvas
@@ -248,14 +268,19 @@ class Maze(object):
 
             if rnd < self.agent.epsilon:
                 action = random.randint(0, 3)
+                while action == 0 and self.position[1] == self.boundary[1] or\
+                        action == 1 and self.position[1] == self.boundary[3] or \
+                        action == 2 and self.position[0] == self.boundary[0] or\
+                        action == 3 and self.position[0] == self.boundary[2]:
+                    action = random.randint(0, 3)
             else:
                 actions = self.agent.predict(canvas)
                 action = np.argmax(actions)
 
-                while action == 0 and self.position[0] == self.boundary[0] or\
-                        action == 1 and self.position[0] == self.boundary[2] or \
-                        action == 2 and self.position[1] == self.boundary[1] or\
-                        action == 3 and self.position[1] == self.boundary[3]:
+                while action == 0 and self.position[1] == self.boundary[1] or\
+                        action == 1 and self.position[1] == self.boundary[3] or \
+                        action == 2 and self.position[0] == self.boundary[0] or\
+                        action == 3 and self.position[0] == self.boundary[2]:
                     actions[action] = -1e6
                     action = np.argmax(actions)
 
@@ -279,7 +304,7 @@ class Maze(object):
                 self.visited[self.position[0]][self.position[1]] = 1
 
             if game_over and current_reward < 0:  # -20 for falling
-                current_reward = -20
+                current_reward = -1000
 
             print("current_reward:", current_reward)
             self.reward += current_reward
@@ -287,7 +312,7 @@ class Maze(object):
             canvas = self.get_canvas()
             status = [prev_canvas, action, current_reward, canvas, game_over]
             self.agent.memorize(status)
-            self.agent.train()
+            self.agent.train(iRepeat, loss_value)
 
             if game_over:
                 print("game over")
@@ -310,6 +335,7 @@ if __name__ == '__main__':
 
     num_reps = 100000
     num_reps_to_save_weights = 50
+    loss = []
     for iRepeat in range(num_reps):
 
         mission = MalmoPython.MissionSpec(mission_xml, True)
@@ -338,7 +364,7 @@ if __name__ == '__main__':
                 print("Error:", error.text)
 
         print("maze run")
-        maze.run(iRepeat)
+        maze.run(iRepeat, loss)
 
         # Save weights
         if num_reps % num_reps_to_save_weights == 0:
