@@ -6,8 +6,8 @@ title:  Home
 # Welcom to the Legendary Homepage!!!!
 ***
 
-We are going to build an agent that can make the best choice in battle by using
-bow.
+We are going to build an agent that can solve a maze by using Deep Q-learning
+algorithm.
 
 # Links
 ***

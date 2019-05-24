@@ -319,9 +319,9 @@ class Maze(object):
             if len(world_state.rewards) > 0:
                 current_reward = world_state.rewards[-1].getValue()
 
-            if self.visited[self.position[0]][self.position[1]] == 0:
-                current_reward += 2
-                self.visited[self.position[0]][self.position[1]] = 1
+            # if self.visited[self.position[0]][self.position[1]] == 0:
+            #     current_reward += 2
+            #     self.visited[self.position[0]][self.position[1]] = 1
 
             if game_over and current_reward < 0:  # -20 for falling
                 current_reward = -50
@@ -332,7 +332,7 @@ class Maze(object):
             self.reward += current_reward
 
             canvas = self.get_canvas()
-            status = [prev_canvas, action, current_reward, canvas, game_over]
+            status = [prev_canvas, action, self.reward, canvas, game_over]
             self.agent.memorize(status)
             self.agent.train(iRepeat, loss_value)
 
