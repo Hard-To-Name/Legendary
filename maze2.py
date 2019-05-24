@@ -1,9 +1,14 @@
 from __future__ import print_function
-import os, sys, time, datetime, json, random
+import os
+import sys
+import time
+import datetime
+import json
+import random
 import numpy as np
 from keras.models import Sequential
 from keras.layers.core import Dense, Activation
-from keras.optimizers import SGD , Adam, RMSprop
+from keras.optimizers import SGD, Adam, RMSprop
 from keras.layers.advanced_activations import PReLU
 import MalmoPython
 
@@ -84,7 +89,8 @@ def GetMissionXML():
 def build_model(load_weight_filename, lr=0.001):
     global ACTIONS
     model = Sequential()
-    model.add(Dense(MAP_LENGTH * MAP_WIDTH, input_shape=(MAP_LENGTH * MAP_WIDTH, )))
+    model.add(Dense(MAP_LENGTH * MAP_WIDTH,
+                    input_shape=(MAP_LENGTH * MAP_WIDTH, )))
     model.add(PReLU())
     model.add(Dense(MAP_LENGTH * MAP_WIDTH))
     model.add(PReLU())
@@ -121,7 +127,7 @@ class iKun(object):
         inputs = np.zeros((data_size, env_size))
         targets = np.zeros((data_size, len(ACTIONS)))
 
-        for i, j in enumerate(np.random.choice(range(mem_size), data_size, replace = False)):
+        for i, j in enumerate(np.random.choice(range(mem_size), data_size, replace=False)):
             canvas, action, reward, canvas_next, game_over = self.memory[j]
             inputs[i] = canvas
             targets[i] = self.predict(canvas)
@@ -173,7 +179,8 @@ class Maze(object):
                     self.position = [i // MAP_WIDTH, i % MAP_WIDTH]
                     self.maze[i // MAP_WIDTH][i % MAP_WIDTH] = LAND
                     print("self.position:", self.position)
-                else: continue
+                else:
+                    continue
                 # Track first block
                 if self.boundary[0] == -1:
                     self.boundary[0] = i // MAP_WIDTH
@@ -189,9 +196,10 @@ class Maze(object):
         canvas[self.position[0]][self.position[1]] = SELF
         return canvas.reshape((1, -1))
 
-    def run(self):
+    def run(self, begin=True):
         global ACTIONS, LAND
-        self.initialize()
+        if begin:
+            self.initialize()
         canvas = self.get_canvas()
 
         while True:
@@ -259,6 +267,7 @@ if __name__ == '__main__':
 
     num_reps = 100000
     num_reps_to_save_weights = 50
+    begin = True
     for iRepeat in range(num_reps):
         mission = MalmoPython.MissionSpec(mission_xml, True)
         mission_record = MalmoPython.MissionRecordSpec()
@@ -268,7 +277,8 @@ if __name__ == '__main__':
         max_retries = 3
         for retry in range(max_retries):
             try:
-                agent_host.startMission(mission, my_client_pool, mission_record, 0, "iKun")
+                agent_host.startMission(
+                    mission, my_client_pool, mission_record, 0, "iKun")
                 break
             except RuntimeError as e:
                 if retry == max_retries - 1:
@@ -285,11 +295,17 @@ if __name__ == '__main__':
                 print("Error:", error.text)
 
         print("maze run")
-        maze.run()
+        if iRepeat > 0:
+            begin = False
+            if iRepeat % 50 == 0:
+                n,w,s,e = tuple(i for i in maze.boundary)
+                maze.position = [random.randint(w,e-1), rando.randint(s,n-1)]
+        maze.run(begin)
 
         # Save weights
         if num_reps % num_reps_to_save_weights == 0:
-            ikun.model.save_weights(save_weight_filename + '.h5', overwrite=True)
+            ikun.model.save_weights(
+                save_weight_filename + '.h5', overwrite=True)
             print("Weights saved.")
 
     time.sleep(10000)
