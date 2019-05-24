@@ -11,6 +11,7 @@ from keras.models import Sequential
 from keras.layers.core import Dense, Activation
 from keras.optimizers import SGD, Adam, RMSprop
 from keras.layers.advanced_activations import PReLU
+from PIL import Image
 import matplotlib.pyplot as plt
 import MalmoPython
 
@@ -28,6 +29,8 @@ TARGET = 3
 SELF = 4
 
 INIT_POS = [-1, -1]
+
+save_images = True
 
 
 def GetMissionXML(i):
@@ -91,7 +94,7 @@ def GetMissionXML(i):
             </Mission>'''
 
 
-def build_model(load_weight_filename, lr=0.001):
+def build_model(load_weight_filename, lr=0.01):
     global ACTIONS
     model = Sequential()
     model.add(Dense(MAP_LENGTH * MAP_WIDTH,
@@ -100,7 +103,7 @@ def build_model(load_weight_filename, lr=0.001):
     model.add(Dense(MAP_LENGTH * MAP_WIDTH))
     model.add(PReLU())
     model.add(Dense(len(ACTIONS)))
-    #model.load_weights(load_weight_filename + '.h5')
+    model.load_weights(load_weight_filename + '.h5')
     model.compile(optimizer='adam', loss='mse')
     return model
 
@@ -160,6 +163,7 @@ class Maze(object):
         self.boundary = [-1, -1, -1, -1]
         self.agent = agent
         self.reward = 0
+        self.rep = 0  # for video recording
 
     def initialize(self):
         global MAP_LENGTH, MAP_WIDTH, TARGET, AIR, LAND, INIT_POS
@@ -247,7 +251,6 @@ class Maze(object):
         plt.show()
         self.initialize()
         canvas = self.get_canvas()
-        self.visited = np.zeros((MAP_LENGTH, MAP_WIDTH))
 
         if not iRepeat == 0:
             # self.boundary[0] <= INIT_POS[0] <= self.boundary[2]
@@ -314,6 +317,13 @@ class Maze(object):
                 print("Error:", error.text)
             game_over = False if world_state.is_mission_running else True
 
+            # Save images
+            if save_images and len(world_state.video_frames) > 0:
+                frame = world_state.video_frames[-1]
+                image = Image.frombytes('RGB', (frame.width, frame.height), bytes(frame.pixels))
+                self.rep = self.rep + 1
+                image.save('rep_' + str(self.rep).zfill(3) + '.png')
+
             # Update recognized maze
             current_reward = 0
             if len(world_state.rewards) > 0:
@@ -323,7 +333,7 @@ class Maze(object):
             #     current_reward += 2
             #     self.visited[self.position[0]][self.position[1]] = 1
 
-            if game_over and current_reward < 0:  # -20 for falling
+            if game_over and current_reward < 50:  # -20 for falling
                 current_reward = -50
 
             print("current_reward:", current_reward)
@@ -361,6 +371,8 @@ if __name__ == '__main__':
         mission_xml = GetMissionXML(iRepeat)
         mission = MalmoPython.MissionSpec(mission_xml, True)
         mission_record = MalmoPython.MissionRecordSpec()
+        mission.requestVideo(1280, 960)
+        mission.setViewpoint(1)
         my_client_pool = MalmoPython.ClientPool()
         my_client_pool.add(MalmoPython.ClientInfo("127.0.0.1", 10000))
 
