@@ -70,6 +70,7 @@ def GetMissionXML():
                 </AgentStart>
                 <AgentHandlers>
                     <DiscreteMovementCommands/>
+                    <AbsoluteMovementCommands/>
                     <RewardForSendingCommand reward="-1"/>
                     <RewardForTouchingBlockType>
                       <Block reward="100" type="redstone_block" behaviour="onceOnly"/>
@@ -203,24 +204,42 @@ class Maze(object):
 
     def teleport(self, teleport_x, teleport_z):
         """Directly teleport to a specific position."""
-        tp_command = "tp " + str(teleport_x) + " 56 " + str(teleport_z)
-        self.agent_host.sendCommand(tp_command)
-        good_frame = False
-        while not good_frame:
-            world_state = self.agent_host.getWorldState()
-            if not world_state.is_mission_running:
-                print("Mission ended prematurely - error.")
-                exit(1)
-            if not good_frame and world_state.number_of_video_frames_since_last_state > 0:
-                frame_x = world_state.video_frames[-1].xPos
-                frame_z = world_state.video_frames[-1].zPos
-                if math.fabs(frame_x - teleport_x) < 0.001 and math.fabs(frame_z - teleport_z) < 0.001:
-                    good_frame = True
 
-    def run(self):
+        # TODO: chenge the teleport position to random position
+        tp_command = "tp -25.5 71 2.5"
+        self.agent_host.sendCommand(tp_command)
+        # good_frame = False
+        # while not good_frame:
+        #     world_state = self.agent_host.getWorldState()
+        #     if not world_state.is_mission_running:
+        #         print("Mission ended prematurely - error.")
+        #         exit(1)
+        #     if not good_frame and world_state.number_of_video_frames_since_last_state > 0:
+        #         frame_x = world_state.video_frames[-1].xPos
+        #         frame_z = world_state.video_frames[-1].zPos
+        #         if math.fabs(frame_x - teleport_x) < 0.001 and math.fabs(frame_z - teleport_z) < 0.001:
+        #             good_frame = True
+
+    def run(self, iRepeat):
         global ACTIONS, LAND
         self.initialize()
         canvas = self.get_canvas()
+
+        if not iRepeat == 0:
+            # self.boundary[0] <= INIT_POS[0] <= self.boundary[2]
+            # self.boundary[1] <= INIT_POS[1] <= self.boundary[3]
+
+            '''
+            position is wrong, the maze is at height y=69, so teleport to y=71
+            to make sure that agent won't fail. Maze's position is at x=-32 to
+            x= -32+length of edge, z=-5 to z=-5+length of edge. Make sure that
+            the final position is +-0.5, e.g. x = -22.5, y = 71, z = -0.5
+            '''
+            startX = random.randint(
+                maze.boundary[0], maze.boundary[2]) - INIT_POS[0]
+            startZ = random.randint(
+                maze.boundary[1], maze.boundary[3]) - INIT_POS[1]
+            maze.teleport(startX, startZ)
 
         while True:
             prev_canvas = canvas
@@ -293,15 +312,6 @@ if __name__ == '__main__':
     num_reps_to_save_weights = 50
     for iRepeat in range(num_reps):
 
-        if not iRepeat == 0:
-            # self.boundary[0] <= INIT_POS[0] <= self.boundary[2]
-            # self.boundary[1] <= INIT_POS[1] <= self.boundary[3]
-            startX = random.randint(
-                maze.boundary[0], maze.boundary[2]) - INIT_POS[0]
-            startZ = random.randint(
-                maze.boundary[1], maze.boundary[3]) - INIT_POS[1]
-            maze.teleport(startX, startZ)
-
         mission = MalmoPython.MissionSpec(mission_xml, True)
         mission_record = MalmoPython.MissionRecordSpec()
         my_client_pool = MalmoPython.ClientPool()
@@ -328,7 +338,7 @@ if __name__ == '__main__':
                 print("Error:", error.text)
 
         print("maze run")
-        maze.run()
+        maze.run(iRepeat)
 
         # Save weights
         if num_reps % num_reps_to_save_weights == 0:
