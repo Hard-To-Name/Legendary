@@ -11,6 +11,7 @@ from keras.models import Sequential
 from keras.layers.core import Dense, Activation
 from keras.optimizers import SGD, Adam, RMSprop
 from keras.layers.advanced_activations import PReLU
+import matplotlib.pyplot as plt
 import MalmoPython
 
 ACTIONS = ['movenorth 1', 'movesouth 1', 'movewest 1', 'moveeast 1']
@@ -29,11 +30,11 @@ SELF = 4
 INIT_POS = [-1, -1]
 
 
-def GetMissionXML():
+def GetMissionXML(i):
     return '''<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
             <Mission xmlns="http://ProjectMalmo.microsoft.com" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
               <About>
-                <Summary>Hello world!</Summary>
+                <Summary> Running Maze ''' + str(i) + ''' </Summary>
               </About>
             <ServerSection>
               <ServerInitialConditions>
@@ -224,8 +225,26 @@ class Maze(object):
         #         if math.fabs(frame_x - teleport_x) < 0.001 and math.fabs(frame_z - teleport_z) < 0.001:
         #             good_frame = True
 
+    def show(self):
+        plt.grid(True)
+        nrows, ncols = self.maze.shape
+        ax = plt.gca()
+        ax.set_xticks(np.arange(0.5, nrows, 1))
+        ax.set_yticks(np.arange(0.5, ncols, 1))
+        ax.set_xticklabels([])
+        ax.set_yticklabels([])
+        canvas = np.copy(self.maze)
+        canvas[self.position[0]][self.position[1]] = SELF
+        plt.imshow(canvas.transpose(), interpolation='none', cmap='gray')
+        plt.draw()
+        plt.gca().invert_xaxis()
+        plt.gca().invert_yaxis()
+        plt.pause(0.01)
+
     def run(self, iRepeat, loss_value):
         global ACTIONS, LAND
+        plt.ion()
+        plt.show()
         self.initialize()
         canvas = self.get_canvas()
         self.visited = np.zeros((MAP_LENGTH, MAP_WIDTH))
@@ -288,6 +307,7 @@ class Maze(object):
             self.position[MOVES[action][0]] += MOVES[action][1]
             print("position:", self.position)
             agent_host.sendCommand(ACTIONS[action])
+            self.show()
             time.sleep(0.3)
             world_state = self.agent_host.getWorldState()
             for error in world_state.errors:
@@ -304,9 +324,11 @@ class Maze(object):
                 self.visited[self.position[0]][self.position[1]] = 1
 
             if game_over and current_reward < 0:  # -20 for falling
-                current_reward = -1000
+                current_reward = -50
 
             print("current_reward:", current_reward)
+            if current_reward > 1:
+                time.sleep(2)
             self.reward += current_reward
 
             canvas = self.get_canvas()
@@ -320,7 +342,6 @@ class Maze(object):
 
 
 if __name__ == '__main__':
-    mission_xml = GetMissionXML()
     agent_host = MalmoPython.AgentHost()
     agent_host.setDebugOutput(False)
     load_weight_filename = "weights"
@@ -337,7 +358,7 @@ if __name__ == '__main__':
     num_reps_to_save_weights = 50
     loss = []
     for iRepeat in range(num_reps):
-
+        mission_xml = GetMissionXML(iRepeat)
         mission = MalmoPython.MissionSpec(mission_xml, True)
         mission_record = MalmoPython.MissionRecordSpec()
         my_client_pool = MalmoPython.ClientPool()
