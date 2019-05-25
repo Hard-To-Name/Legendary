@@ -3,7 +3,7 @@ layout: default
 title: Status
 ---
 
-<div><iframe width="854" height="480" src="https://www.youtube.com/embed/?" frameborder="0" allowfullscreen></iframe></div>
+<div><iframe width="854" height="480" src="https://www.youtube.com/embed/N0l6Dgrfr7A" frameborder="0" allowfullscreen></iframe></div>
 
 ## Summary
 We thought it is hard for us to achive something in two weeks by doing the
