@@ -6,6 +6,8 @@ title:  Home
 # Welcom to the Legendary Homepage!!!!
 ***
 
+![Maze](3.jpg?raw=true)
+
 We are going to build an agent that can solve a maze by using Deep Q-learning
 algorithm.
 
