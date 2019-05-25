@@ -27,7 +27,7 @@ store information, we add codes that will stop the agent move beyond the maze.
 
 We use the Deep Q-learning algorithm to train the agent. We represent each state by 
 the 21x21 map specifying the positions of the agent, the goal, lands, and dangerous stones, 
-denoted by number 0-4. We use a neural network with two Dense layers both having PRelu 
+denoted by number 0-4. We use a neural network with three Dense layers both having PRelu 
 as activate function. The neural network takes a 21x21xbatch_size matrix as input, and 
 ouputs a 1x4 action matrix that each index indicates the rewards by choosing four 
 different actions. The neural network has one hidden layer with the same size as input layer. 
