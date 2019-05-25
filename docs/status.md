@@ -7,7 +7,12 @@ title: Status
 We thought it is hard for us to achive something in two weeks by doing the
 battle agent. Therefore, we changed out goal into solving the maze problem by
 using deep q-learning algorithm. And the goal is that agent can find a way to
-the destination in the maze.
+the destination in the maze (shorter ways are preferred).  
+  
+The input is the map, the agent's current position, time elapsed. The agent should be able to 
+decide where to move according to the map and its current position. The output will be 
+the continuous moves taken by agents till the end of the game (either the agent reaches the goal or 
+fall).
 
 ***
 ## Approach
@@ -20,11 +25,13 @@ south, move west, and move east. We calculate the reward as - 100 for reach the
 goal, -1 for each movement, -50 for touching the wall. Since we use the grid to
 store information, we add codes that will stop the agent move beyond the maze.
 
-We use the Deep Q-learning algorithm to train the agent. We use the neural
-networks that takes a 21x21 matrix as input, and ouputs a 1x4 matrix that each
-index indicates the rewards by choosing four different actions. The neural
-network has one hidden layer with the same size as input layer. And update the
-old reward by using the function:
+We use the Deep Q-learning algorithm to train the agent. We represent each state by 
+the 21x21 map specifying the positions of the agent, the goal, lands, and dangerous stones, 
+denoted by number 0-4. We use a neural network with two Dense layers both having PRelu 
+as activate function. The neural network takes a 21x21xbatch_size matrix as input, and 
+ouputs a 1x4 action matrix that each index indicates the rewards by choosing four 
+different actions. The neural network has one hidden layer with the same size as input layer. 
+And update the old reward by using the function:
 ![updateq](updateq.png)
 And we use MSE as out loss function.
 
@@ -38,6 +45,23 @@ then move towards to the beginning.
 
 ***
 ## Evaluation
+
+* Quantative Metrics:
+Steps taken -- By taking each move the agent will receive a small negative reward (-1)  
+Death -- On moving to a stone, the agent will die and receive a large negative reward (-50)  
+Reaching a new position -- By exploring a position that the agent has never been to, 
+the agent will receive a small positive reward (+2)  
+Reaching the goal -- When the agent reaches the goal, the game will end and the agent 
+will receive a large positive reward (+100).  
+The rewards mentioned above are used for both training and evaluation. Also the evaluation 
+of the agent's performance will be based on the ratio of the number of solved mazes over the 
+total number of mazes.
+
+* Qualitative Metrics:
+It will be impressive if this algorithm can reach the goal by following the shortest path with 
+a high success rate. Otherwise it is also good to reach the goal successfully without touching stones.
+
+![Reaching goal after several epoches](test.jpg)
 
 ***
 ## Remaining Goals and Challenges
