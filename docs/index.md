@@ -14,6 +14,6 @@ algorithm.
 
 * [Team Members](team.html)
 * [Proposal](proposal.html)
-* [Project Status](status.html) (not published yet)
+* [Project Status](status.html)
 * [Final Report](final.html) (not published yet)
 * [Github Repository](https://github.com/Hard-To-Name/Legendary)
