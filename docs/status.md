@@ -61,7 +61,7 @@ total number of mazes.
 It will be impressive if this algorithm can reach the goal by following the shortest path with 
 a high success rate. Otherwise it is also good to reach the goal successfully without touching stones.
 
-![Reaching goal after several epoches](docs/test.jpg?raw=true)
+![Reaching goal after several epoches](docs/test.jpg?raw=true){:height="700px" width="400px"}
 
 ***
 ## Remaining Goals and Challenges
