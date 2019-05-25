@@ -32,7 +32,7 @@ as activate function. The neural network takes a 21x21xbatch_size matrix as inpu
 ouputs a 1x4 action matrix that each index indicates the rewards by choosing four 
 different actions. The neural network has one hidden layer with the same size as input layer. 
 And update the old reward by using the function:
-![updateq](docs/updateq.png?raw=true)
+![updateq](updateq.png?raw=true)
 And we use MSE as out loss function.
 
 After several tries, we found that the learning is not as good as expected. We
@@ -61,7 +61,7 @@ total number of mazes.
 It will be impressive if this algorithm can reach the goal by following the shortest path with 
 a high success rate. Otherwise it is also good to reach the goal successfully without touching stones.
 
-![Reaching goal after several epoches](docs/test.jpg?raw=true)
+![Reaching goal after several epoches](test.jpg?raw=true)
 
 ***
 ## Remaining Goals and Challenges
