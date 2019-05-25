@@ -3,6 +3,8 @@ layout: default
 title: Status
 ---
 
+<div><iframe width="854" height="480" src="https://www.youtube.com/embed/?" frameborder="0" allowfullscreen></iframe></div>
+
 ## Summary
 We thought it is hard for us to achive something in two weeks by doing the
 battle agent. Therefore, we changed out goal into solving the maze problem by
@@ -24,6 +26,8 @@ index as "self" after moving. We have four different actions - move north, move
 south, move west, and move east. We calculate the reward as - 100 for reach the
 goal, -1 for each movement, -50 for touching the wall. Since we use the grid to
 store information, we add codes that will stop the agent move beyond the maze.
+
+![Deep Q Network](2.png?raw=true)
 
 We use the Deep Q-learning algorithm to train the agent. We represent each state by 
 the 21x21 map specifying the positions of the agent, the goal, lands, and dangerous stones, 
