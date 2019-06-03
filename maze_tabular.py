@@ -86,12 +86,12 @@ def GetMissionXML(i):
 
 
 class Tabular(object):
-    def __init__(self, epsilon=1, alpha=0.3, gamma=1, n=3):
+    def __init__(self, epsilon=0.8, alpha=0.2, gamma=0.6, n=1, q_table={}):
         self.epsilon = epsilon
         self.alpha = alpha
         self.gamma = gamma
         self.n = n
-        self.q_table = {}
+        self.q_table = q_table
         self.position = [-1, -1]
         self.boundary = [-1, -1, -1, -1]
 
@@ -191,7 +191,7 @@ class Tabular(object):
         self.initialize(agent_host)
 
         while not done_update:
-            s0 = tuple(self.position)
+            s0 = str(self.position)
             possible_actions = self.get_possible_actions(agent_host)
             a0 = self.choose_action(s0, possible_actions)
 
@@ -210,7 +210,7 @@ class Tabular(object):
                         T = t + 1
                         S.append('Term State')
                     else:
-                        s = tuple(self.position)
+                        s = str(self.position)
                         S.append(s)
                         possible_actions = self.get_possible_actions(agent_host)
                         next_a = self.choose_action(s, possible_actions)
@@ -232,10 +232,20 @@ class Tabular(object):
 if __name__ == '__main__':
     agent_host = MalmoPython.AgentHost()
     agent_host.setDebugOutput(False)
+    load_weight_filename = "table.json"
+    save_weight_filename = "table.json"
 
-    tabular = Tabular()
+    # Load Q Table
+    table = {}
+    try:
+        with open(load_weight_filename, 'r') as infile:
+            table = json.load(infile)
+    except:
+        print("No Q table found. Use empty Q table.")
+    tabular = Tabular(q_table=table)
 
-    num_reps = 1000
+    num_reps = 100000
+    num_reps_to_save_weights = 50
     for iRepeat in range(num_reps):
         mission_xml = GetMissionXML(iRepeat)
         mission = MalmoPython.MissionSpec(mission_xml, True)
@@ -265,5 +275,12 @@ if __name__ == '__main__':
                 print("Error:", error.text)
 
         tabular.run(agent_host)
+
+        # Save weights
+        if iRepeat % num_reps_to_save_weights == 0:
+            tabular.epsilon -= 0.05
+            with open(save_weight_filename, 'w') as outfile:
+                json.dump(tabular.q_table, outfile)
+            print("Q Table saved.")
 
         time.sleep(1)
