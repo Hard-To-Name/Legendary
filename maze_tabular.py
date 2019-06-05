@@ -20,11 +20,18 @@ import MalmoPython
 ACTIONS = ['movenorth 1', 'movesouth 1', 'movewest 1', 'moveeast 1']
 MOVES = {0: [1, -1], 1: [1, 1], 2: [0, -1], 3: [0, 1]}
 
-SIZE = 10
-MAP_LENGTH = 2 * SIZE + 1
-MAP_WIDTH = 2 * SIZE + 1
+SIZE = 6
+MAP_LENGTH = 21
+MAP_WIDTH = 21
+
+UNKNOWN = 0
+AIR = 1
+LAND = 2
+TARGET = 3
+SELF = 4
 
 def GetMissionXML(i):
+    global SIZE
     return '''<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
             <Mission xmlns="http://ProjectMalmo.microsoft.com" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
               <About>
@@ -45,13 +52,13 @@ def GetMissionXML(i):
                   </DrawingDecorator>
                   <MazeDecorator>
                     <Seed>0</Seed>
-                    <SizeAndPosition width="''' + str(10) + '''" length="''' + str(10) + '''" height="10" xOrigin="0" yOrigin="69" zOrigin="0"/>
+                    <SizeAndPosition width="''' + str(SIZE) + '''" length="''' + str(SIZE) + '''" height="10" xOrigin="-32" yOrigin="69" zOrigin="-5"/>
                     <StartBlock type="emerald_block" fixedToEdge="true"/>
                     <EndBlock type="redstone_block" fixedToEdge="true"/>
                     <PathBlock type="diamond_block"/>
                     <FloorBlock type="air"/>
                     <GapBlock type="stone"/>
-                    <GapProbability>''' + str(0.2) + '''</GapProbability>
+                    <GapProbability>''' + str(0.5) + '''</GapProbability>
                     <AllowDiagonalMovement>false</AllowDiagonalMovement>
                   </MazeDecorator>
                   <ServerQuitFromTimeUp timeLimitMs="10000"/>
@@ -86,17 +93,19 @@ def GetMissionXML(i):
 
 
 class Tabular(object):
-    def __init__(self, epsilon=0.8, alpha=0.2, gamma=0.6, n=1, q_table={}):
+    def __init__(self, epsilon=0, alpha=0.3, gamma=0.6, q_table={}):
         self.epsilon = epsilon
         self.alpha = alpha
         self.gamma = gamma
-        self.n = n
+        self.positive_n = 5
+        self.negative_n = 1
         self.q_table = q_table
         self.position = [-1, -1]
         self.boundary = [-1, -1, -1, -1]
+        self.maze = np.zeros((MAP_LENGTH, MAP_WIDTH))
 
-    def initialize(self, agent_host):
-        global MAP_WIDTH
+    def initialize(self,  agent_host):
+        global MAP_LENGTH, MAP_WIDTH, TARGET, AIR, LAND, INIT_POS
         grid = -1
         world_state = agent_host.getWorldState()
         while world_state.has_mission_begun:
@@ -113,16 +122,26 @@ class Tabular(object):
 
         if not grid == -1:
             for i in range(len(grid)):
-                if grid[i] == "emerald_block":
-                    self.position = [i % MAP_WIDTH, i // MAP_WIDTH]
-                if grid[i] == "air": continue
-
+                if grid[i] == "redstone_block":
+                    self.maze[i % MAP_WIDTH][i // MAP_WIDTH] = TARGET
+                elif grid[i] == "stone":
+                    self.maze[i % MAP_WIDTH][i // MAP_WIDTH] = AIR
+                elif grid[i] == "diamond_block":
+                    self.maze[i % MAP_WIDTH][i // MAP_WIDTH] = LAND
+                elif grid[i] == "emerald_block":
+                    INIT_POS = [i % MAP_WIDTH, i // MAP_WIDTH]
+                    self.position = INIT_POS
+                    self.maze[i % MAP_WIDTH][i // MAP_WIDTH] = LAND
+                else:
+                    continue
+                # Track first block
                 if self.boundary[0] == -1:
                     self.boundary[0] = i % MAP_WIDTH
                     self.boundary[1] = i // MAP_WIDTH
                 # Track last block
                 self.boundary[2] = i % MAP_WIDTH
                 self.boundary[3] = i // MAP_WIDTH
+            print(self.boundary)
 
     def get_possible_actions(self, agent_host):
         actions = [0, 1, 2, 3]
@@ -135,6 +154,22 @@ class Tabular(object):
         if self.position[0] == self.boundary[2]:
             actions.remove(3)
         return actions
+
+    def show(self):
+        plt.grid(True)
+        nrows, ncols = self.maze.shape
+        ax = plt.gca()
+        ax.set_xticks(np.arange(0.5, nrows, 1))
+        ax.set_yticks(np.arange(0.5, ncols, 1))
+        ax.set_xticklabels([])
+        ax.set_yticklabels([])
+        canvas = np.copy(self.maze)
+        canvas[self.position[0]][self.position[1]] = SELF
+        plt.imshow(canvas.transpose(), interpolation='none', cmap='gray')
+        plt.draw()
+        plt.gca().invert_xaxis()
+        plt.gca().invert_yaxis()
+        plt.pause(0.01)
 
     def choose_action(self, curr_state, possible_actions):
         if curr_state not in self.q_table:
@@ -158,35 +193,44 @@ class Tabular(object):
         return a
 
     def act(self, agent_host, action):
-        global ACTIONS, MOVES
+        global ACTIONS, MOVES, TARGET
         agent_host.sendCommand(ACTIONS[action])
         self.position[MOVES[action][0]] += MOVES[action][1]
 
         world_state = agent_host.getWorldState()
-        game_over = False if world_state.is_mission_running else True
+        game_over = False
 
-        reward = 0
-        if len(world_state.rewards) > 0:
-            reward = world_state.rewards[-1].getValue()
-
-        if game_over and reward < 50:  # -50 for falling
+        reward = -2
+        if self.maze[self.position[0]][self.position[1]] == TARGET:
+            reward = 100
+            game_over = True
+        elif self.maze[self.position[0]][self.position[1]] == AIR:
             reward = -50
+            game_over = True
+
+        if game_over:
+            while world_state.is_mission_running:
+                world_state = agent_host.getWorldState()
 
         return [game_over, reward]
 
     def update_q_table(self, tau, S, A, R, T):
         curr_s, curr_a, curr_r = S.popleft(), A.popleft(), R.popleft()
         G = sum([self.gamma ** i * R[i] for i in range(len(S))])
-        if tau + self.n < T:
-            G += self.gamma ** self.n * self.q_table[S[-1]][A[-1]]
+
+        n = self.positive_n if R[-1] > 0 else self.negative_n
+        if tau + n < T:
+            G += self.gamma ** n * self.q_table[S[-1]][A[-1]]
 
         old_q = self.q_table[curr_s][curr_a]
         self.q_table[curr_s][curr_a] = old_q + self.alpha * (G - old_q)
 
 
     def run(self, agent_host):
+        plt.ion()
+        plt.show()
         S, A, R = deque(), deque(), deque()
-        present_reward = 0
+        visited = np.zeros((MAP_LENGTH, MAP_WIDTH))
         done_update = False
         self.initialize(agent_host)
 
@@ -204,6 +248,13 @@ class Tabular(object):
                 time.sleep(0.1)
                 if t < T:
                     game_over, current_reward = self.act(agent_host, A[-1])
+                    if game_over:
+                        current_reward += np.sum(visited) * 50 / (SIZE * SIZE)
+                        print("Reward:", current_reward)
+                    else:
+                        visited[self.position[0]][self.position[1]] = 1
+                    if iRepeat > 50:
+                        self.show()
                     R.append(current_reward)
 
                     if game_over:
@@ -216,7 +267,7 @@ class Tabular(object):
                         next_a = self.choose_action(s, possible_actions)
                         A.append(next_a)
 
-                tau = t - self.n + 1
+                tau = t - self.negative_n + 1
                 if tau >= 0:
                     self.update_q_table(tau, S, A, R, T)
 
@@ -225,7 +276,6 @@ class Tabular(object):
                         tau = tau + 1
                         self.update_q_table(tau, S, A, R, T)
                     done_update = True
-                    print(self.q_table)
                     break
 
 
@@ -240,6 +290,7 @@ if __name__ == '__main__':
     try:
         with open(load_weight_filename, 'r') as infile:
             table = json.load(infile)
+            print("Q table loaded:", table)
     except:
         print("No Q table found. Use empty Q table.")
     tabular = Tabular(q_table=table)
@@ -277,10 +328,10 @@ if __name__ == '__main__':
         tabular.run(agent_host)
 
         # Save weights
+        with open(save_weight_filename, 'w') as outfile:
+            json.dump(tabular.q_table, outfile)
+        print("Q Table saved.")
+
         if iRepeat % num_reps_to_save_weights == 0:
             tabular.epsilon -= 0.05
-            with open(save_weight_filename, 'w') as outfile:
-                json.dump(tabular.q_table, outfile)
-            print("Q Table saved.")
-
-        time.sleep(1)
+            tabular.epsilon = max(0, tabular.epsilon)
