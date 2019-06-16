@@ -41,18 +41,17 @@
                                         </div>
                                     <br>
                                     <p>During the first several missions, although the agent doesn’t get to the destination, the setting of the maze is becoming more and more clear to the agent. In other words, the agent keeps gaining knowledge about where the safe grids are and where the toxic grids are so the agent can walk further away from the starting point.</p>
-                                    <p>Then, after the agent reaches the destination, it will be searching for the shortest path. After the agent’s first arrival at the endpoint, the number of steps for the agent to get to the destination has been declining in the following missions.</p>
-
+                                    <p>Then, after the agent reaches the destination, it will be searching for the shortest path. After the agent’s first arrival at the endpoint, the number of steps for the agent to get to the destination has been declining in the following missions. The reason is that the reward which is brought by a grid closer to the destination is higher than the reward which is brought by an unexplored random grid at most of the time. Since there are still a few grids that are exceptions, the shorestest path we have found so far is suboptimal (very close to the optimal path).</p>
                                         <div class="image square fit">
 										<img src="images/Steps.png" alt="" />
-                                        <p>Figure 1. Number of Steps per epoch vs. epochs</p>
+                                        <p>Figure 2. Number of Steps per epoch vs. epochs</p>
                                         </div>
 
-                                    <p>The curves of both the figure above and the figure below tend to be horizontal near the end. This means that the agent has found the shortest path that it could found. According to the figure, the shortest path seems to be (a number). Then, we used the Dijkstra’s algorithm to calculate the shortest path. The result turns out to be (a number), same as the length of the shortest path that the agent has found. Thus, we have verified that the agent is able to reach the destination and find the shortest path of a (size) maze with (a number) missions.</p>
+                                    <p>The curves of all three figures (Exploration Rate, Number of Steps, Rewards) tend to be horizontal near the end. This means that the agent has found the shortest path that it could found. According to the figures, the number of steps taken at epoch 150 is very close to the length of the shortest path. Also in the last several epochs the agent is able to reach the destination and find the nearly optimal path of a 10x10 maze with approximately 100 missions.</p>
 
                                         <div class="image square fit">
 										<img src="images/Reward.png" alt="" />
-                                        <p>Figure 1. Reward per epoch vs. epochs</p>
+                                        <p>Figure 3. Reward per epoch vs. epochs</p>
                                         </div>                              
 
 								</div>								
