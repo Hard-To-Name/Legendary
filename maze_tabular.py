@@ -20,7 +20,7 @@ import MalmoPython
 ACTIONS = ['movenorth 1', 'movesouth 1', 'movewest 1', 'moveeast 1']
 MOVES = {0: [1, -1], 1: [1, 1], 2: [0, -1], 3: [0, 1]}
 
-SIZE = 6
+SIZE = 10
 MAP_LENGTH = 21
 MAP_WIDTH = 21
 
@@ -103,6 +103,9 @@ class Tabular(object):
         self.position = [-1, -1]
         self.boundary = [-1, -1, -1, -1]
         self.maze = np.zeros((MAP_LENGTH, MAP_WIDTH))
+        self.exploration_scores = []
+        self.rewards = []
+        self.nums_steps = []
 
     def initialize(self,  agent_host):
         global MAP_LENGTH, MAP_WIDTH, TARGET, AIR, LAND, INIT_POS
@@ -227,8 +230,8 @@ class Tabular(object):
 
 
     def run(self, agent_host):
-        plt.ion()
-        plt.show()
+        # plt.ion()
+        # plt.show()
         S, A, R = deque(), deque(), deque()
         visited = np.zeros((MAP_LENGTH, MAP_WIDTH))
         done_update = False
@@ -249,12 +252,16 @@ class Tabular(object):
                 if t < T:
                     game_over, current_reward = self.act(agent_host, A[-1])
                     if game_over:
-                        current_reward += np.sum(visited) * 50 / (SIZE * SIZE)
+                        exploration_score = np.sum(visited) / (SIZE * SIZE)
+                        self.exploration_scores.append(exploration_score)
+                        current_reward += exploration_score * 70
+                        self.rewards.append(current_reward)
+                        self.nums_steps.append(t + 1)
                         print("Reward:", current_reward)
                     else:
                         visited[self.position[0]][self.position[1]] = 1
-                    if iRepeat > 50:
-                        self.show()
+                    # if iRepeat > 100:
+                        # self.show()
                     R.append(current_reward)
 
                     if game_over:
@@ -295,7 +302,7 @@ if __name__ == '__main__':
         print("No Q table found. Use empty Q table.")
     tabular = Tabular(q_table=table)
 
-    num_reps = 100000
+    num_reps = 150
     num_reps_to_save_weights = 50
     for iRepeat in range(num_reps):
         mission_xml = GetMissionXML(iRepeat)
@@ -335,3 +342,20 @@ if __name__ == '__main__':
         if iRepeat % num_reps_to_save_weights == 0:
             tabular.epsilon -= 0.05
             tabular.epsilon = max(0, tabular.epsilon)
+
+        time.sleep(0.1)
+
+    plt.plot(tabular.exploration_scores)
+    plt.xlabel("Number of Epochs")
+    plt.ylabel('Exploration Rate per Epoch')
+    plt.show()
+
+    plt.plot(tabular.rewards)
+    plt.xlabel("Number of Epochs")
+    plt.ylabel('Rewards per Epoch')
+    plt.show()
+
+    plt.plot(tabular.nums_steps)
+    plt.xlabel("Number of Epochs")
+    plt.ylabel('Number of Steps Taken per Epoch')
+    plt.show()
