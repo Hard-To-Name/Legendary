@@ -1,0 +1,64 @@
+<html>
+	<head>
+		<title>Legendary Status Report</title>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<link rel="stylesheet" href="assets/css/main.css" />
+	</head>
+	<body class="subpage">
+
+		<!-- Header -->
+			<header id="header">
+				<div class="logo"><a href="index.html">Team Legendary</a></div>
+			</header>
+
+		<!-- Main -->
+			<div id="main">
+
+				<!-- Section -->
+					<section class="wrapper">
+						<div class="inner">
+							<header class="align-center">
+								<h1>Final Report</h1>
+								<iframe width="560" height="315" src="https://www.youtube.com/embed/kWTAID5d0bk" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></header>
+							<div class="flex flex-2">
+								<div class="col col2">
+									<h3>Summary</h3>
+									<p>The goal of our project is to train a Minecraft agent that is able to solve maze problems and find the optimal solution. The maze is a 2d plane with different kinds of grids, including a start grid, an end grid, safe grids, and dangerous grids. The agent starts from the start grid and is aimed to reach the start grid without touching dangerous grids -- the agent will die once stepped on one of those dangerous grids. The agent has four options of action: moving north one grid, moving east one grid, moving south one grid, and moving west one grid.</p>
+									<p>Over the quarter, we tried to apply several machine learning algorithms to train the agent. At the beginning, we tried deep-Q learning, but the result was not satisfying. Then, we changed our method to compute the reward of each grid after each move and train the agent with the q-table obtained. The outcome is satisfying with this method, the agent is able to find the shortest path to solve a 10*10 maze by completing 100 epochs of training.</p>
+									
+									<h3>Approach</h3>
+									<p>At first, we approached the problem by using deep Q-learning. The learning models we have tried include neural network with fully-connected layers and convolutional neural network. The goal of learning models is to compute the reward of each grid and updates the q-table after the end of each epoch. The agent will be awarded 100 points if the end grid is reached. In addition, for each step the agent takes, 1 point was deducted. This policy is to discourage the agent to take unnecessary steps to make sure that the agent finds the shortest path. Then, if the agent dies, 20 points was deducted. However, when we are training with this method, we observed that the agent tends to walk around in an area near the beginning. After analysing, we found the problem is that the training was stuck on the local maximum of reward. To solve this problem, we tried changing the reward policy. In addition to deduct 1 point for each move, we now award the agent an additional reward proportional to the exploration rate (number of visited grids / total number of grids) after each poch. The new policy discourages the agent from moving back to a past grid; instead,  it encourages the agent to explore the girds that have not been reached before. Under this policy, the agent walked furfure away but still got stuck in one area. We consulted the TA Mr. McAleer. We adopted his suggestion, letting the agent start at a random position, so every part of the maze can be explored. By doing this, the agent is able to survive longer in the maze and explore more places. However, the chance for the agent to get to the end point is too low that there is hardly a reward table that is computed after the agent successfully solved the maze. Therefore, it’ll take a long time to have a q-table that is computed after solving the maze for adequate times.</p>
+                                    <p>Considering only two weeks left for our project, we changed the reward policy of parameters of the q table approach. For now the available rewards are: -2 for each step made, -50 for stepping on a dangerous grid, +100 for reaching the end grid. The reward also includes the exploration rate as mentioned above. Furthermore, since the end grid is far to reach comparing to dangerous grids, when the end grid is reached, the positive reward will be propagated to the last 5 states; when a dangerous grid is reached, the negative reward will only be propagated to the last 1 state.</p>
+
+									<h3>Evaluation</h3>
+									<p>The evaluation approaches we used correspond to our goals. We check whether the agent reached the destination. And on reaching the destination, we check whether it is the shortest path. However, the agent is not able to get to the destination at the beginning. That means we need an evaluation method to evaluate the progress the agent has made. After discussing, we think the more moves the agent has made before dying, the more progress the agent has been made, because more moves means that the agent has survived longer, and that indicates the improvement in avoiding the toxic grids, which is a prerequisite for the agent to achieve the endpoint.</p>									
+                                    <p>Using the q-table training method, we observed that the agent’s exploration rate of the maze for each epoch is generally increasing at first over the training process. Once the agent has learned the way to reach the goal, the agent tries to decrease the extra steps and find the shortest path, thus decreasing the the exploration rate.</p>
+                                    
+										<div class="image square fit">
+										<img src="images/Exploration.png" alt="" />
+                                        <p>Figure 1. Exploration rate per epoch vs. epochs</p>
+                                        </div>
+                                    <br>
+                                    <p>During the first several missions, although the agent doesn’t get to the destination, the setting of the maze is becoming more and more clear to the agent. In other words, the agent keeps gaining knowledge about where the safe grids are and where the toxic grids are so the agent can walk further away from the starting point.</p>
+                                    <p>Then, after the agent reaches the destination, it will be searching for the shortest path. After the agent’s first arrival at the endpoint, the number of steps for the agent to get to the destination has been declining in the following missions.</p>
+
+                                        <div class="image square fit">
+										<img src="images/Steps.png" alt="" />
+                                        <p>Figure 1. Number of Steps per epoch vs. epochs</p>
+                                        </div>
+
+                                    <p>The curves of both the figure above and the figure below tend to be horizontal near the end. This means that the agent has found the shortest path that it could found. According to the figure, the shortest path seems to be (a number). Then, we used the Dijkstra’s algorithm to calculate the shortest path. The result turns out to be (a number), same as the length of the shortest path that the agent has found. Thus, we have verified that the agent is able to reach the destination and find the shortest path of a (size) maze with (a number) missions.</p>
+
+                                        <div class="image square fit">
+										<img src="images/Reward.png" alt="" />
+                                        <p>Figure 1. Reward per epoch vs. epochs</p>
+                                        </div>                              
+
+								</div>								
+							</div>
+							</div>
+					</section>
+
+	</body>
+</html>
