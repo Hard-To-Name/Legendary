@@ -33,7 +33,7 @@
 
 									<h3>Evaluation</h3>
 									<p>The evaluation approaches we used correspond to our goals. We check whether the agent reached the destination. And on reaching the destination, we check whether it is the shortest path. However, the agent is not able to get to the destination at the beginning. That means we need an evaluation method to evaluate the progress the agent has made. After discussing, we think the more moves the agent has made before dying, the more progress the agent has been made, because more moves means that the agent has survived longer, and that indicates the improvement in avoiding the toxic grids, which is a prerequisite for the agent to achieve the endpoint.</p>									
-                                    <p>Using the q-table training method, we observed that the agent’s exploration rate of the maze for each epoch is generally increasing at first over the training process. Once the agent has learned the way to reach the goal, the agent tries to decrease the extra steps and find the shortest path, thus decreasing the the exploration rate.</p>
+                                    <p>Using the q-table training method, we observed that the agent’s exploration rate of the maze for each epoch is generally increasing at first over the training process. Once the agent has learned the way to reach the goal, the agent tries to decrease the extra steps and find the shortest path, thus decreasing the exploration rate.</p>
                                     
 										<div class="image square fit">
 										<img src="images/Exploration.png" alt="" />
@@ -53,7 +53,8 @@
 										<img src="images/Reward.png" alt="" />
                                         <p>Figure 3. Reward per epoch vs. epochs</p>
                                         </div>                              
-
+									<h3>Reference</h3>
+									<p>Yusuke S.(2017)Maze Solver source code(Version 1.0)[Source code]. https://github.com/shibuiwilliam/maze_solver</p>
 								</div>								
 							</div>
 							</div>
